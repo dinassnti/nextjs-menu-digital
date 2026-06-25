@@ -24,10 +24,6 @@ const MenuSchema = new Schema(
       required: [true, 'Kategori wajib dipilih'],
       enum: ['Makanan', 'Minuman', 'Snack'] // Membatasi pilihan kategori awal
     },
-    isBestSeller: { 
-      type: Boolean, 
-      default: false // Secara default tidak otomatis jadi best seller
-    }
   },
   {
     timestamps: true // Otomatis membuat kolom tanggal input & edit data (createdAt & updatedAt)
