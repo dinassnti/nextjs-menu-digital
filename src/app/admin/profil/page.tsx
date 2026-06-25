@@ -1,195 +1,176 @@
 "use client";
 
-import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 
-export default function ProfilKafePage() {
-  const [profil, setProfil] = useState({
-    namakafe: "Kafe Digital Mudapedia",
-    deskripsi: "Kafe dengan menu digital yang modern dan interaktif",
-    alamat: "Jalan Digital No. 123, Bandung",
-    telepon: "0821-xxxx-xxxx",
-    email: "kafe@mudapedia.com",
-    jamBuka: "09:00",
-    jamTutup: "22:00",
-    hari: "Senin - Minggu",
+// Daftar hari untuk dropdown
+const DAFTAR_HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+
+export default function ProfileAdminPage() {
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    ownerName: "", email: "", cafeName: "", address: "", phone: ""
   });
 
-  const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // STATE KHUSUS UNTUK HARI DAN JAM BUKA-TUTUP
+  const [startDay, setStartDay] = useState("Senin");
+  const [endDay, setEndDay] = useState("Minggu");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("22:00");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProfil((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user) return;
+      try {
+        const userId = (session.user as any).id;
+        const response = await fetch(`/api/profile/${userId}`);
+        const hasil = await response.json();
+        
+        if (response.ok && hasil.data) {
+          // Masukkan data dasar
+          setProfileData({
+            ownerName: hasil.data.ownerName || "",
+            email: hasil.data.email || "",
+            cafeName: hasil.data.cafeName || "",
+            address: hasil.data.address || "",
+            phone: hasil.data.phone || "",
+          });
+
+          // Pecah data hari (contoh: "Senin - Minggu" menjadi startDay: "Senin", endDay: "Minggu")
+          if (hasil.data.openDays) {
+            const days = hasil.data.openDays.split(" - ");
+            if (days.length === 2) {
+              setStartDay(days[0]);
+              setEndDay(days[1]);
+            }
+          }
+
+          // Pecah data jam (contoh: "09:00 - 22:00" menjadi startTime: "09:00", endTime: "22:00")
+          if (hasil.data.openHours) {
+            const hours = hasil.data.openHours.split(" - ");
+            if (hours.length === 2) {
+              setStartTime(hours[0]);
+              setEndTime(hours[1]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Gagal memuat profil:", error);
+      }
+    };
+    fetchProfile();
+  }, [session]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user) return;
+    setLoading(true);
+
+    try {
+      const userId = (session.user as any).id;
+      
+      // Gabungkan kembali hari dan jam sebelum dikirim ke database
+      const payloadData = {
+        ...profileData,
+        openDays: `${startDay} - ${endDay}`,
+        openHours: `${startTime} - ${endTime}`,
+      };
+
+      const response = await fetch(`/api/profile/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadData),
+      });
+
+      if (response.ok) {
+        alert("Berhasil Diperbarui!");
+      } else {
+        alert("Gagal menyimpan perubahan profil.");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan sistem.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSave = () => {
-    // TODO: Simpan data ke backend API
-    alert("Profil kafe berhasil disimpan!");
-    setSaved(true);
-    setEditing(false);
-    setTimeout(() => setSaved(false), 3000);
+  // Fungsi khusus untuk menyaring input nomor telepon agar murni angka
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const hanyaAngka = e.target.value.replace(/\D/g, ""); // Hapus semua karakter yang bukan angka
+    setProfileData({ ...profileData, phone: hanyaAngka });
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-white rounded-lg">
-      <h1 className="text-3xl font-bold mb-6">Profil Kafe</h1>
+    <div className="max-w-4xl mx-auto space-y-6 p-2">
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <h1 className="text-2xl font-bold text-slate-800">Pengaturan Profil Kafe</h1>
+        <p className="text-slate-500 text-sm mt-1">Lengkapi data operasional lapak digital kafemu.</p>
+      </div>
 
-      {saved && (
-        <div className="p-4 mb-6 bg-green-50 border border-green-200 rounded-lg text-green-700 font-semibold">
-          ✅ Profil berhasil disimpan!
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {/* Nama Kafe */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Kafe</label>
-          <input
-            type="text"
-            name="namakafe"
-            value={profil.namakafe}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Deskripsi */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
-          <textarea
-            name="deskripsi"
-            value={profil.deskripsi}
-            onChange={handleChange}
-            disabled={!editing}
-            rows={4}
-            className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Alamat */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Alamat</label>
-          <input
-            type="text"
-            name="alamat"
-            value={profil.alamat}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Telepon */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Telepon</label>
-          <input
-            type="tel"
-            name="telepon"
-            value={profil.telepon}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={profil.email}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Jam Operasional */}
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Hari</label>
-            <input
-              type="text"
-              name="hari"
-              value={profil.hari}
-              onChange={handleChange}
-              disabled={!editing}
-              className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-              }`}
-            />
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+        <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* BAGIAN DATA AKUN */}
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-slate-400">Nama Owner</label>
+            <input type="text" disabled className="w-full bg-slate-100 border border-slate-200 p-3.5 rounded-xl text-slate-500 cursor-not-allowed font-medium" value={profileData.ownerName} />
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Jam Buka</label>
-            <input
-              type="time"
-              name="jamBuka"
-              value={profil.jamBuka}
-              onChange={handleChange}
-              disabled={!editing}
-              className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-              }`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Jam Tutup</label>
-            <input
-              type="time"
-              name="jamTutup"
-              value={profil.jamTutup}
-              onChange={handleChange}
-              disabled={!editing}
-              className={`w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                !editing ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-              }`}
-            />
-          </div>
-        </div>
 
-        {/* Tombol Aksi */}
-        <div className="flex gap-4 pt-6 border-t border-gray-200">
-          {!editing ? (
-            <button
-              onClick={() => setEditing(true)}
-              className="flex-1 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-            >
-              ✏️ Edit Profil
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-slate-400">Email Utama</label>
+            <input type="text" disabled className="w-full bg-slate-100 border border-slate-200 p-3.5 rounded-xl text-slate-500 cursor-not-allowed font-medium" value={profileData.email} />
+          </div>
+
+          <div className="border-b md:col-span-2 my-2 border-slate-100"></div>
+
+          {/* BAGIAN DATA KAFE */}
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-slate-700">Nama Kafe</label>
+            <input type="text" required placeholder="Contoh: Dewitari Coffee" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium" value={profileData.cafeName} onChange={(e) => setProfileData({...profileData, cafeName: e.target.value})} />
+          </div>
+
+          {/* INPUT NOMOR TELEPON (HANYA ANGKA) */}
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-slate-700">Nomor Telepon</label>
+            <input type="text" inputMode="numeric" required placeholder="Contoh: 08123456789" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium" value={profileData.phone} onChange={handlePhoneInput} />
+          </div>
+
+          {/* DROPDOWN HARI OPERASIONAL */}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Hari Operasional</label>
+            <div className="flex items-center gap-3">
+              <select className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium cursor-pointer" value={startDay} onChange={(e) => setStartDay(e.target.value)}>
+                {DAFTAR_HARI.map(hari => <option key={`start-${hari}`} value={hari}>{hari}</option>)}
+              </select>
+              <span className="text-slate-400 font-bold text-sm">s/d</span>
+              <select className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium cursor-pointer" value={endDay} onChange={(e) => setEndDay(e.target.value)}>
+                {DAFTAR_HARI.map(hari => <option key={`end-${hari}`} value={hari}>{hari}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* TIME PICKER JAM OPERASIONAL */}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Jam Operasional</label>
+            <div className="flex items-center gap-3">
+              <input type="time" required className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium cursor-pointer" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <span className="text-slate-400 font-bold text-sm">s/d</span>
+              <input type="time" required className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium cursor-pointer" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="md:col-span-2 space-y-1">
+            <label className="text-sm font-bold text-slate-700">Alamat Lengkap Kafe</label>
+            <textarea required placeholder="Tuliskan alamat fisik kedai Anda agar mudah dicari di maps..." rows={3} className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800 font-medium" value={profileData.address} onChange={(e) => setProfileData({...profileData, address: e.target.value})}></textarea>
+          </div>
+
+          <div className="md:col-span-2 flex justify-end pt-4">
+            <button type="submit" disabled={loading} className="bg-indigo-600 text-white font-bold py-3.5 px-10 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 disabled:bg-indigo-400">
+              {loading ? "Menyimpan Konfigurasi..." : "💾 Simpan Perubahan Profil"}
             </button>
-          ) : (
-            <>
-              <button
-                onClick={handleSave}
-                className="flex-1 bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              >
-                ✅ Simpan Perubahan
-              </button>
-              <button
-                onClick={() => {
-                  setEditing(false);
-                }}
-                className="flex-1 bg-gray-400 text-white p-3 rounded-lg hover:bg-gray-500 transition-colors font-semibold"
-              >
-                ❌ Batal
-              </button>
-            </>
-          )}
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );

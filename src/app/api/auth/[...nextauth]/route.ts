@@ -1,27 +1,65 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { connectDB } from "@/lib/db";
+import User from "@/models/User";
+import bcrypt from "bcryptjs";
 
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
-      name: "Login Admin",
+      name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text", placeholder: "Ketik: admin" },
-        password: { label: "Password", type: "password", placeholder: "Ketik: admin123" }
+        username: { label: "Email", type: "text" }, // kita gunakan email untuk login
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Karena ini khusus untuk satu pemilik kafe, kita atur username & password statis
-        if (credentials?.username === "admin" && credentials?.password === "admin123") {
-          return { id: "1", name: "Owner Kafe" };
+        await connectDB();
+
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error("Email dan password wajib diisi");
         }
-        return null; // Jika salah, login otomatis ditolak
+
+        // 1. Cari user berdasarkan email di database
+        const user = await User.findOne({ email: credentials.username });
+        if (!user) {
+          throw new Error("Akun tidak ditemukan");
+        }
+
+        // 2. Cocokkan password inputan dengan password terenkripsi di DB
+        const isPasswordMatch = await bcrypt.compare(credentials.password, user.password);
+        if (!isPasswordMatch) {
+          throw new Error("Password salah");
+        }
+
+        // 3. Jika lolos, kirim data user ke session
+        return {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+        };
       }
     })
   ],
-  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    // Memasukkan ID User ke dalam token jwt
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    // Memasukkan ID User dari token ke session frontend
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id;
+      }
+      return session;
+    }
+  },
   pages: {
-    signIn: "/login", // Mengarahkan ke halaman login kustom kita
-  }, 
+    signIn: "/login", // Arahkan ke halaman login kustom kita
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 });
 
 export { handler as GET, handler as POST };

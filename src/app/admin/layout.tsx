@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react"; 
 import { usePathname } from "next/navigation";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession(); 
+
+  const ownerName = session?.user?.name || "Memuat...";
+  const ownerInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "☕";
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-800">
@@ -23,9 +27,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         
         <nav className="flex-1 px-4 flex flex-col gap-2 overflow-y-auto mt-4">
-          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Menu Utama</p>
-          
-          {/* Cukup 1 Menu Utama Saja Sekarang */}
+          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pengaturan</p>
+          <Link 
+            href="/admin/profil" 
+            className={`px-4 py-3.5 rounded-2xl transition-all duration-300 flex items-center gap-4 font-semibold ${
+              pathname === '/admin/profil' 
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200/50 translate-x-1' 
+              : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
+            }`}
+          >
+            <span className="text-xl">⚙️</span> Profil Kafe
+          </Link>
+
+          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-2">Menu Utama</p>
           <Link 
             href="/admin" 
             className={`px-4 py-3.5 rounded-2xl transition-all duration-300 flex items-center gap-4 font-semibold ${
@@ -37,17 +51,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="text-xl">📋</span> Manajemen Menu
           </Link>
 
-          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-2">Pengaturan</p>
-          
+          {/* TOMBOL BARU: Menuju Katalog Publik */}
+          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-2">Publik</p>
           <Link 
-            href="/admin/profil" 
-            className={`px-4 py-3.5 rounded-2xl transition-all duration-300 flex items-center gap-4 font-semibold ${
-              pathname === '/admin/profil' 
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200/50 translate-x-1' 
-              : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
-            }`}
+            href="/katalog" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-4 py-3.5 rounded-2xl transition-all duration-300 flex items-center gap-4 font-semibold text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
           >
-            <span className="text-xl">⚙️</span> Profil Kafe
+            <span className="text-xl">🌍</span> Lihat Katalog
           </Link>
         </nav>
 
@@ -66,11 +78,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-10 flex justify-end items-center shrink-0 z-10">
            <div className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors">
               <div className="text-right">
-                 <p className="text-sm font-bold text-slate-900">Admin Utama</p>
+                 <p className="text-sm font-bold text-slate-900">{ownerName}</p>
                  <p className="text-xs text-slate-500 font-medium">Owner Kafe</p>
               </div>
               <div className="w-11 h-11 bg-indigo-100 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold">
-                A
+                {ownerInitial}
               </div>
            </div>
         </header>
