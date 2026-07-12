@@ -1,21 +1,27 @@
 import Link from "next/link";
+import Image from "next/image";
 import { connectDB } from "@/lib/db";
 import Profile from "@/models/Profile";
 import Menu from "@/models/Menu";
 
 export const dynamic = 'force-dynamic';
 
-export default async function KatalogPage({ searchParams }: any) {
+type MenuItem = {
+  _id: string;
+  name: string;
+  image?: string;
+  description?: string;
+  category: string;
+  price: number;
+};
+
+export default async function KatalogPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
   await connectDB();
   const profile = await Profile.findOne().lean();
-  const menus = await Menu.find().lean();
+  const menus = await Menu.find().lean() as MenuItem[];
   
   const cafeName = profile?.cafeName || "Kafe MenuDigital";
   const address = profile?.address || "Alamat belum diatur oleh admin.";
-  
-  // Menarik data Hari dan Jam Operasional dari Database
-  const openDays = profile?.openDays || "Hari belum diatur";
-  const openHours = profile?.openHours || "Jam belum diatur";
 
   const params = await Promise.resolve(searchParams);
   const activeTab = params?.tab || "Makanan";
@@ -26,7 +32,7 @@ export default async function KatalogPage({ searchParams }: any) {
     { id: "Snack", label: "Snack", emoji: "🍟" },
   ];
 
-  const displayedMenus = menus.filter((m: any) => m.category === activeTab);
+  const displayedMenus = menus.filter((m) => m.category === activeTab);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-24 selection:bg-indigo-100 selection:text-indigo-900">
@@ -41,6 +47,15 @@ export default async function KatalogPage({ searchParams }: any) {
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </Link>
 
+        {/* TOMBOL PINTASAN ADMIN (KHUSUS DEMO) */}
+        <Link 
+          href="/admin/daftar-menu" 
+          className="absolute top-6 right-6 md:right-10 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-full shadow-sm transition-colors flex items-center gap-1.5"
+          title="Pergi ke Daftar Menu Admin"
+        >
+          <span>⚙️</span> Admin
+        </Link>
+
         <div className="max-w-3xl mx-auto text-center mt-2">
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
             {cafeName}
@@ -49,16 +64,6 @@ export default async function KatalogPage({ searchParams }: any) {
           <p className="text-slate-600 font-medium mt-5 flex items-center justify-center gap-2 text-base md:text-lg">
             <span className="text-xl">📍</span> {address}
           </p>
-
-          {/* INFORMASI HARI & JAM BUKA (Tampilan Badge/Kapsul) */}
-          <div className="flex flex-wrap justify-center items-center gap-3 mt-4 text-sm md:text-base">
-            <span className="flex items-center gap-2 bg-slate-50 text-slate-600 px-5 py-2 rounded-full border border-slate-200 shadow-sm font-medium">
-              <span>📅</span> {openDays}
-            </span>
-            <span className="flex items-center gap-2 bg-slate-50 text-slate-600 px-5 py-2 rounded-full border border-slate-200 shadow-sm font-medium">
-              <span>⏰</span> {openHours}
-            </span>
-          </div>
         </div>
       </header>
 
@@ -92,16 +97,18 @@ export default async function KatalogPage({ searchParams }: any) {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-8">
-            {displayedMenus.map((item: any) => (
+            {displayedMenus.map((item: MenuItem) => (
               <div 
                 key={item._id.toString()} 
                 className="bg-white rounded-[1.5rem] p-4 md:p-5 shadow-md border border-slate-100 flex flex-col"
               >
-                <div className="w-full aspect-[4/3] rounded-[1rem] overflow-hidden mb-5 bg-slate-100 border border-slate-50">
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
-                    className="w-full h-full object-cover" 
+                <div className="w-full aspect-[4/3] rounded-[1rem] overflow-hidden mb-5 bg-slate-100 border border-slate-50 relative">
+                  <Image
+                    src={item.image || '/placeholder.png'}
+                    alt={item.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
                   />
                 </div>
                 
